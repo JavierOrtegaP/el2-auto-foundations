@@ -2,6 +2,10 @@
 
 [![Sponsor](https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=githubsponsors&logoColor=white)](https://github.com/sponsors/JavierOrtegaP)
 
+*If you like my work and Auto Foundations saves you some clicking, you can
+[sponsor me on GitHub](https://github.com/sponsors/JavierOrtegaP). It's completely optional, but always appreciated,
+and it keeps me making more mods. Thank you! ❤️*
+
 A [BepInEx](https://github.com/BepInEx/BepInEx) mod that spends your spare influence on foundations for you, so you
 don't have to look for free foundation tiles and click each one every turn.
 
