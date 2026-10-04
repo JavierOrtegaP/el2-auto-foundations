@@ -1,0 +1,16 @@
+name: Tests
+
+# The mod itself needs the game's assemblies to build; the choice of spots is plain C# and is tested here.
+on:
+  push:
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - run: dotnet run --project tests/AutoFoundationsTests.csproj

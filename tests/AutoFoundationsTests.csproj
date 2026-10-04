@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Runs the choice of spots (pure C#, no game types) against hand-built states. Run: dotnet run, project tests/AutoFoundationsTests.csproj -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net7.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <RootNamespace>AutoFoundations.Tests</RootNamespace>
+    <NoWarn>$(NoWarn);CS0649</NoWarn>
+    <!-- Runs on any newer .NET too. -->
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\src\Foundations.cs" />
+  </ItemGroup>
+
+</Project>
