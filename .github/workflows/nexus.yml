@@ -1,0 +1,58 @@
+name: Nexus Mods
+
+# Each published GitHub release goes to the mod's Nexus Mods page as the new version of its main file, with the
+# version's changelog. The zip is the one attached to the release (built from the game's assemblies, which CI can't).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to upload, e.g. v1.0.1
+        required: true
+
+permissions:
+  contents: read
+
+env:
+  # The API ids from the Files tab of https://www.nexusmods.com/endlesslegend2/mods/10 (tick "Advanced").
+  NEXUS_FILE_ID: "8084889"
+  NEXUS_MOD_ID: "37155762077706"
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Get the release zip and its changelog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name || inputs.tag }}
+        run: |
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "*.zip"
+          version="${TAG#v}"
+          {
+            echo "ZIP=$(ls *.zip | head -1)"
+            echo "VERSION=$version"
+            # This version's section of CHANGELOG.md, as plain text: no **, ` or [link](url), wrapped lines joined back up.
+            echo "CHANGELOG<<CHANGELOG_END"
+            awk -v v="$version" '$0 ~ "^## " v "( |$)" {on=1; next} /^## / {on=0} on' CHANGELOG.md \
+              | sed -E -e 's/\*\*//g' -e 's/`//g' -e 's/\[([^]]*)\]\([^)]*\)/\1/g' \
+              | awk '/^  [^ -]/ && n {sub(/^ +/, ""); line = line " " $0; next} {if (n++) print line; line = $0} END {if (n) print line}' \
+              | sed '/./,$!d'
+            echo "CHANGELOG_END"
+          } >> "$GITHUB_ENV"
+
+      - name: Upload to Nexus Mods
+        uses: Nexus-Mods/upload-action@c96019556046053aa26044b44396cd38929daf23 # v1.0.0-beta.10
+        with:
+          api_key: ${{ secrets.NEXUSMODS_API_KEY }}
+          file_id: ${{ env.NEXUS_FILE_ID }}
+          mod_id: ${{ env.NEXUS_MOD_ID }}
+          filename: ${{ env.ZIP }}
+          version: ${{ env.VERSION }}
+          display_name: Auto Foundations ${{ env.VERSION }}
+          changelog: ${{ env.CHANGELOG }}
+          archive_existing_version: true
+          update_mod_version: true

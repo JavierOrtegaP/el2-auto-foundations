@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 — 2026-10-04
+
+- No changes to the mod itself. The download now comes with the current README (a screenshot, how to support the
+  project), and Auto Foundations is also on [Nexus Mods](https://www.nexusmods.com/endlesslegend2/mods/10), updated
+  with every release.
+
 ## 1.0.0 — 2026-10-04
 
 First release, for ENDLESS Legend 2 1.0 (Steam build 25623753).

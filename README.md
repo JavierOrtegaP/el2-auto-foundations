@@ -44,7 +44,9 @@ window. Both show the same:
 1. Install **BepInEx 5** for Windows x64 (tested with
    [5.4.23.5](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5)): extract it into the game folder (the folder
    with `Endless Legend 2.exe`), so that `winhttp.dll` sits next to the game's exe. Start the game once.
-2. Extract `AutoFoundations-<version>.zip` into the same folder. The mod ends up in `BepInEx/plugins/AutoFoundations/`.
+2. Download `AutoFoundations-<version>.zip` from the [releases](../../releases) (or from
+   [Nexus Mods](https://www.nexusmods.com/endlesslegend2/mods/10)) and extract it into the same folder. The mod ends up
+   in `BepInEx/plugins/AutoFoundations/`.
 3. Load a game. Press F7 (with Mod Menu) or `` ` `` to open it.
 
 If nothing happens, check `BepInEx/LogOutput.log` for `Auto Foundations ... active`.

@@ -7,7 +7,7 @@
     <AssemblyName>AutoFoundations</AssemblyName>
     <RootNamespace>AutoFoundations</RootNamespace>
     <!-- The one place to bump the version: also the BepInEx plugin version and the release zip name. -->
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <!-- ENDLESS Legend 2 runs Unity 6 on Mono with the .NET 4.x profile. -->
     <TargetFramework>net472</TargetFramework>
     <LangVersion>latest</LangVersion>
