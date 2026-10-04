@@ -10,6 +10,8 @@
 A [BepInEx](https://github.com/BepInEx/BepInEx) mod that spends your spare influence on foundations for you, so you
 don't have to look for free foundation tiles and click each one every turn.
 
+![Auto Foundations' page in Mod Menu: on/off, the influence to keep, this turn's purchases and each city's spots](docs/auto-foundations.png)
+
 ## What it does
 
 Wherever the game would let you build a foundation, the mod buys one with the game's own "build foundation" order, as
