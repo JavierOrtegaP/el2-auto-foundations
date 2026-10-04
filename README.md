@@ -19,11 +19,11 @@ soon as it opens up, as long as your influence stays above the amount you keep (
 A short notice at the top of the screen can tell you when foundations were bought (off by default; switch it on in
 the window).
 
-## The window (Mod Menu page, or the ` key)
+## The window (Mod Menu page, or the `` ` `` key)
 
 With [Mod Menu](https://github.com/JavierOrtegaP/el2-mod-menu) installed (optional), its key (F7) lists a
-**Foundations** page and the ` key is not used; without it, the ` key (left of 1) opens the mod's own window. Both show
-the same:
+**Foundations** page and the `` ` `` key is not used; without it, the `` ` `` key (left of 1) opens the mod's own
+window. Both show the same:
 
 - **Buy automatically: ON/OFF**, and how much influence to keep.
 - **Buy now**: buys every spot you can afford right away, also when automatic buying is off.
@@ -36,7 +36,7 @@ the same:
    [5.4.23.5](https://github.com/BepInEx/BepInEx/releases/tag/v5.4.23.5)): extract it into the game folder (the folder
    with `Endless Legend 2.exe`), so that `winhttp.dll` sits next to the game's exe. Start the game once.
 2. Extract `AutoFoundations-<version>.zip` into the same folder. The mod ends up in `BepInEx/plugins/AutoFoundations/`.
-3. Load a game. Press F7 (with Mod Menu) or ` to open it.
+3. Load a game. Press F7 (with Mod Menu) or `` ` `` to open it.
 
 If nothing happens, check `BepInEx/LogOutput.log` for `Auto Foundations ... active`.
 

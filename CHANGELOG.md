@@ -8,6 +8,6 @@ First release, for ENDLESS Legend 2 1.0 (Steam build 25623753).
   default); free foundations are always taken.
 - Best spots first: most tile yield per influence, weighted by each city's job strategy.
 - In-game window: a Foundations page in [Mod Menu](https://github.com/JavierOrtegaP/el2-mod-menu) (F7) when
-  installed, else its own window (` key): on/off, reserve, "Buy now", spots per city with a per-city switch, recent
-  purchases.
+  installed, else its own window (`` ` `` key): on/off, reserve, "Buy now", spots per city with a per-city switch,
+  recent purchases.
 - Optional on-screen notice when foundations are bought (off by default).
