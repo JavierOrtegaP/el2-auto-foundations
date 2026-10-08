@@ -10,15 +10,14 @@ namespace AutoFoundations
 {
     // Finds every tile the local empire could build a foundation on, using the same checks and prices as the game's own
     // "build foundation" order. Runs on the sandbox thread right after the game copies its state for the UI
-    // (Snapshots.Synchronize runs there every 100 ms, while the simulation is idle) and hands the main thread an
-    // immutable FoundationState.
+    // (Snapshots.Synchronize runs there while the simulation is idle) and hands the main thread an immutable
+    // FoundationState. Only when the simulation moved on since the last scan (its frame counter goes up whenever it
+    // processed something: an order, a state change...), or when asked.
     [HarmonyPatch(typeof(Snapshots), nameof(Snapshots.Synchronize))]
     internal static class FoundationCapture
     {
-        private const long IntervalMs = 1000;
-
-        private static readonly System.Diagnostics.Stopwatch Clock = System.Diagnostics.Stopwatch.StartNew();
-        private static long nextScanMs;
+        private static int lastFrame = -1;
+        private static Sandbox lastSandbox;
         private static int scan;
         private static FoundationState latest;
         private static volatile bool refreshRequested;
@@ -28,7 +27,7 @@ namespace AutoFoundations
 
         internal static FoundationState Latest => Volatile.Read(ref latest);
 
-        // Scan on the next sync instead of waiting for the interval (after posting orders...).
+        // Scan on the next sync even if the frame counter hasn't moved (after posting orders, on opening the window...).
         internal static void RequestRefresh() => refreshRequested = true;
 
         [HarmonyPostfix]
@@ -50,19 +49,19 @@ namespace AutoFoundations
 
         private static void Capture()
         {
-            long now = Clock.ElapsedMilliseconds;
-            if (!refreshRequested && now < nextScanMs)
-            {
-                return;
-            }
-            refreshRequested = false;
-            nextScanMs = now + IntervalMs;
-
             Sandbox sandbox = SandboxManager.Sandbox;
             if (sandbox == null || !sandbox.IsInitialized)
             {
                 return;
             }
+            int frame = Sandbox.Frame;
+            if (!refreshRequested && frame == lastFrame && ReferenceEquals(sandbox, lastSandbox))
+            {
+                return;
+            }
+            refreshRequested = false;
+            lastFrame = frame;
+            lastSandbox = sandbox;
             int empireIndex = sandbox.LocalEmpireIndex;
             MajorEmpire[] empires = Sandbox.MajorEmpires;
             if (empires == null || empireIndex < 0 || empireIndex >= empires.Length || ReferenceEquals(empires[empireIndex], null))

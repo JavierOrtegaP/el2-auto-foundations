@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.2 — 2026-10-08
+
+- Every spot you can afford is ordered at once, instead of at most ten per frame: a foundation's price doesn't depend
+  on the others bought.
+- No more fixed limits on the game's orders (a 10-second wait, three tries per spot). The mod waits for the game's
+  answer to each: a spot the game refuses is left until next turn; an order it doesn't accept at that moment of the
+  turn is sent again once the game moves on.
+- Spots are scanned whenever the simulation moves on, instead of once a second, so new spots are bought sooner.
+- The window lists what was bought in the last turn anything was, instead of the last 15 purchases.
+
 ## 1.0.1 — 2026-10-04
 
 - No changes to the mod itself. The download now comes with the current README (a screenshot, how to support the

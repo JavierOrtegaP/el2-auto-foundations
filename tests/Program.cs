@@ -93,6 +93,9 @@ namespace AutoFoundations.Tests
             yields[Yield.Food] = 2f;
             yields[Yield.Science] = 1.5f;
             Expect(Yield.Describe(yields) == "+2 Food, +1.5 Science", $"got {Yield.Describe(yields)}");
+            yields[Yield.Food] = 0.04f;
+            yields[Yield.Science] = -0.04f;
+            Expect(Yield.Describe(yields) == "nothing", $"what rounds to 0 is left out (got {Yield.Describe(yields)})");
         }
 
         private static FoundationState State(float influence, params FoundationSpot[] spots)

@@ -37,7 +37,7 @@ window. Both show the same:
 - **Buy automatically: ON/OFF**, and how much influence to keep.
 - **Buy now**: buys every spot you can afford right away, also when automatic buying is off.
 - Spots and their cost per city, with a per-city **Auto/Off** switch (saved per game).
-- What was bought recently, with each tile's yields.
+- What was bought in the last turn with purchases, with each tile's yields.
 
 ## Install
 
@@ -80,10 +80,12 @@ Saved in `BepInEx/config/el2.autofoundations.cfg`; the first two are also in the
 
 ## How it works
 
-- Spots are found on the game's simulation thread, right after the game copies its state for its own UI, with the
-  game's own `CanBuildFoundationAt` and `GetFoundationInfluenceCostAt`; nothing in the simulation is modified directly.
-- Purchases go through `OrderBuildFoundationAt`, the order a click on a foundation tile sends, a few per frame; an
-  order the game doesn't carry out is retried, then that spot is left until the next turn.
+- Spots are found on the game's simulation thread, right after the game copies its state for its own UI, whenever
+  the simulation has moved on, with the game's own `CanBuildFoundationAt` and `GetFoundationInfluenceCostAt`; nothing
+  in the simulation is modified directly.
+- Purchases go through `OrderBuildFoundationAt`, the order a click on a foundation tile sends: every affordable spot
+  at once, the next ones only once the game answered. A spot the game refuses is left until the next turn; an order
+  it doesn't accept at that moment of the turn is sent again once the game moves on.
 
 ## Building
 

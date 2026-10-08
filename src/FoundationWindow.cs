@@ -13,6 +13,7 @@ namespace AutoFoundations
         private const int WindowId = 0x41465731;
         private const float Width = 620f;
         private const float Height = 560f;
+        // How long the on-screen notice of a purchase stays up: long enough to read, short enough not to linger.
         private const float NoticeSeconds = 8f;
         private const string ModMenuGuid = "el2.modmenu";
 
@@ -29,8 +30,8 @@ namespace AutoFoundations
         private Vector2 scroll;
         private string keyName;
         private Key key = Key.Backquote;
-        // Time.unscaledTime when Mod Menu last drew this mod's page.
-        private float embeddedAt = -10f;
+        // Time.frameCount when Mod Menu last drew this mod's page.
+        private int embeddedFrame = -1;
 
         private bool stylesReady;
         private Texture2D windowBackground;
@@ -84,13 +85,14 @@ namespace AutoFoundations
             }
             visible = visible && !menu;
             MouseOver = visible && buyer.InGame && IsMouseInside();
-            buyer.Watched = visible || Time.unscaledTime - embeddedAt < 0.5f;
+            // Update runs before OnGUI: a page Mod Menu shows was drawn in the previous frame.
+            buyer.Watched = visible || Time.frameCount - embeddedFrame <= 1;
         }
 
         // Mod Menu's page: the same content, without this mod's own window around it.
         public void DrawEmbedded()
         {
-            embeddedAt = Time.unscaledTime;
+            embeddedFrame = Time.frameCount;
             if (!buyer.InGame)
             {
                 GUILayout.Label("Load a game to see where foundations can go.");
@@ -257,7 +259,7 @@ namespace AutoFoundations
             if (buyer.History.Count > 0)
             {
                 GUILayout.Space(8f);
-                GUILayout.Label("Recently bought", headingStyle);
+                GUILayout.Label(buyer.HistoryTurn == state.Turn ? "Bought this turn" : $"Bought on turn {buyer.HistoryTurn}", headingStyle);
                 foreach (string line in buyer.History)
                 {
                     GUILayout.Label(line, mutedStyle);

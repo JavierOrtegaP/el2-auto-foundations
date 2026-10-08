@@ -12,43 +12,42 @@ namespace AutoFoundations
 {
     // Main thread: spends influence above the reserve on foundations with the game's own "build foundation" order, the
     // same order a click on a foundation tile sends. Automatically while AutoBuy is on, or once on "Buy now". Each order
-    // is tracked with the game's ticket, so a purchase is only counted once the game reports it carried it out.
+    // is tracked with the game's ticket, so a purchase is only counted once the game reports it carried it out. Every
+    // affordable spot is ordered at once (a foundation's price doesn't depend on the others bought), and the next ones
+    // only from a scan taken after those were answered, so each choice sees the influence already spent.
     internal sealed class FoundationBuyer
     {
-        // A ticket the game hasn't answered by then is settled from the scans instead.
-        private const float TicketTimeoutSeconds = 10f;
-        private const int MaxAttemptsPerTile = 3;
-        // A few per frame, and the next ones only from a scan taken after those were answered, so each choice sees the
-        // influence already spent.
-        private const int MaxOrdersPerUpdate = 10;
-        private const int HistoryLength = 15;
-
         private sealed class PendingFoundation
         {
             public ulong City;
             public float Cost;
             public float[] Yields;
-            public float Time;
-            public int Scan;
+            // The game's state when the order was sent: an order it turns down in that state is tried again once it
+            // moved on to another.
+            public string SentIn;
             public PostOrderTicket Ticket;
         }
 
         // Tile -> order sent and not answered yet.
         private readonly Dictionary<int, PendingFoundation> pending = new Dictionary<int, PendingFoundation>();
-        // This turn: orders sent per tile, tiles bought, tiles the game refused.
-        private readonly Dictionary<int, int> attempts = new Dictionary<int, int>();
+        // This turn: tiles bought, tiles the game refused.
         private readonly HashSet<int> bought = new HashSet<int>();
         private readonly HashSet<int> refused = new HashSet<int>();
         // Spots seen this turn, to report the ones that open up during it.
         private readonly HashSet<int> seenSpots = new HashSet<int>();
+        // The purchases of historyTurn, the last turn anything was bought in.
         private readonly List<string> history = new List<string>();
         private readonly Dictionary<ulong, string> cityNames = new Dictionary<ulong, string>();
         private FoundationSettings settings;
         private string gameId;
         private int turn = -1;
+        private int historyTurn = -1;
         private int seenScan;
         // Only act on scans taken after this one: older ones may list tiles built on since, or influence already spent.
         private int freshAfterScan;
+        // The game's state in which it turned foundation orders down (not accepted at that moment of the turn), or
+        // null: no orders until it has moved on to another state.
+        private string rejectedIn;
         private bool wanted;
         private bool buyNow;
         // The purchases since the buyer last went idle, for one summary line in the log.
@@ -74,8 +73,10 @@ namespace AutoFoundations
 
         public bool IsBuying => pending.Count > 0 || buyNow;
 
-        // Newest first.
+        // The purchases of HistoryTurn, newest first.
         public IReadOnlyList<string> History => history;
+
+        public int HistoryTurn => historyTurn;
 
         public void BuyNow()
         {
@@ -162,11 +163,11 @@ namespace AutoFoundations
                 buyNow = buyNow && turn < 0;
                 turn = state.Turn;
                 pending.Clear();
-                attempts.Clear();
                 bought.Clear();
                 refused.Clear();
                 seenSpots.Clear();
                 cityNames.Clear();
+                rejectedIn = null;
                 BoughtThisTurn = 0;
                 SpentThisTurn = 0f;
             }
@@ -176,9 +177,13 @@ namespace AutoFoundations
                 seenScan = state.Scan;
                 ReportNewSpots(state);
             }
+            if (rejectedIn != null && rejectedIn != CurrentState())
+            {
+                rejectedIn = null;
+            }
             bool fresh = state.Scan > freshAfterScan;
             int posted = 0;
-            if ((auto || buyNow) && state.CanAct && state.IsHuman && fresh)
+            if ((auto || buyNow) && state.CanAct && state.IsHuman && fresh && rejectedIn == null)
             {
                 posted = PostOrders(state);
                 if (buyNow && posted == 0 && pending.Count == 0)
@@ -221,14 +226,15 @@ namespace AutoFoundations
             gameId = id;
             settings = Load(id);
             pending.Clear();
-            attempts.Clear();
             bought.Clear();
             refused.Clear();
             seenSpots.Clear();
             history.Clear();
             cityNames.Clear();
             turn = -1;
+            historyTurn = -1;
             seenScan = 0;
+            rejectedIn = null;
             buyNow = false;
             BoughtThisTurn = 0;
             SpentThisTurn = 0f;
@@ -241,58 +247,47 @@ namespace AutoFoundations
             settings = null;
             State = null;
             pending.Clear();
+            rejectedIn = null;
             buyNow = false;
             ResetBurst();
         }
 
-        // The game's answer to each order: Valid = carried out, Invalid = its own checks refused it, Rejected = not
-        // accepted at this moment of the turn (tried again, up to MaxAttemptsPerTile).
+        // The game answers every order: Valid = carried out, Invalid = its own checks refused it (the spot is left until
+        // next turn), Rejected = not accepted at this moment of the turn (ordered again once the game moved on).
         private void CheckTickets(FoundationState state)
         {
             if (pending.Count == 0)
             {
                 return;
             }
-            float now = Time.unscaledTime;
             bool answered = false;
             foreach (KeyValuePair<int, PendingFoundation> pair in pending.ToList())
             {
                 PendingFoundation order = pair.Value;
                 PostOrderTicket ticket = order.Ticket;
-                bool waiting = ticket != null && ticket.Status == Amplitude.AsyncStatus.Started;
-                if (waiting && now - order.Time < TicketTimeoutSeconds)
+                if (!ticket.IsDone)
                 {
                     continue;
                 }
                 pending.Remove(pair.Key);
                 answered = true;
-                PostOrderResponse result = ticket != null && ticket.Status == Amplitude.AsyncStatus.Completed ? ticket.Result : PostOrderResponse.Undefined;
+                PostOrderResponse result = ticket.Status == Amplitude.AsyncStatus.Completed ? ticket.Result : PostOrderResponse.Undefined;
                 if (result == PostOrderResponse.Valid)
                 {
-                    Bought(state, pair.Key, order, string.Empty);
+                    Bought(state, pair.Key, order);
                     continue;
                 }
-                if (result == PostOrderResponse.Invalid)
+                if (result == PostOrderResponse.Rejected)
                 {
-                    refused.Add(pair.Key);
-                    Plugin.Log.LogWarning($"Turn {state.Turn}: the game refused a foundation in {CityName(order.City)} (tile {pair.Key}); leaving that spot until next turn.");
+                    rejectedIn = order.SentIn;
+                    if (Plugin.LogPurchases.Value)
+                    {
+                        Plugin.Log.LogInfo($"Turn {state.Turn}: foundation order for {CityName(order.City)} (tile {pair.Key}) not accepted at this moment ({order.SentIn}); ordering again once the game moves on.");
+                    }
                     continue;
                 }
-                // No answer in time: a later scan that no longer offers the tile means it was built.
-                if ((ticket == null || waiting) && state.Scan > order.Scan && !state.Spots.Any(s => s.Tile == pair.Key))
-                {
-                    Bought(state, pair.Key, order, " (no answer from the game, but the spot is gone)");
-                    continue;
-                }
-                if (Attempts(pair.Key) >= MaxAttemptsPerTile)
-                {
-                    refused.Add(pair.Key);
-                    Plugin.Log.LogWarning($"Turn {state.Turn}: the game did not take a foundation order for {CityName(order.City)} (tile {pair.Key}, {result}) {Attempts(pair.Key)} times; leaving that spot until next turn.");
-                }
-                else if (Plugin.LogPurchases.Value)
-                {
-                    Plugin.Log.LogInfo($"Turn {state.Turn}: foundation order for {CityName(order.City)} (tile {pair.Key}) not taken ({result}); trying again.");
-                }
+                refused.Add(pair.Key);
+                Plugin.Log.LogWarning($"Turn {state.Turn}: the game refused a foundation in {CityName(order.City)} (tile {pair.Key}, {(result == PostOrderResponse.Invalid ? "its checks failed" : ticket.Status.ToString())}); leaving that spot until next turn.");
             }
             if (answered)
             {
@@ -302,7 +297,7 @@ namespace AutoFoundations
             }
         }
 
-        private void Bought(FoundationState state, int tile, PendingFoundation order, string note)
+        private void Bought(FoundationState state, int tile, PendingFoundation order)
         {
             bought.Add(tile);
             BoughtThisTurn++;
@@ -311,14 +306,15 @@ namespace AutoFoundations
             burstSpent += order.Cost;
             LastBoughtAt = Time.unscaledTime;
             string text = $"{CityName(order.City)}: {(order.Cost > 0f ? $"{order.Cost:#,0} influence" : "free")}, tile yields {Yield.Describe(order.Yields)}";
-            history.Insert(0, $"Turn {state.Turn}: {text}");
-            if (history.Count > HistoryLength)
+            if (state.Turn != historyTurn)
             {
-                history.RemoveAt(history.Count - 1);
+                history.Clear();
+                historyTurn = state.Turn;
             }
+            history.Insert(0, text);
             if (Plugin.LogPurchases.Value)
             {
-                Plugin.Log.LogInfo($"Turn {state.Turn}: foundation bought in {text}{note}.");
+                Plugin.Log.LogInfo($"Turn {state.Turn}: foundation bought in {text}.");
             }
         }
 
@@ -360,20 +356,19 @@ namespace AutoFoundations
             burstStartInfluence = float.NaN;
         }
 
-        private int Attempts(int tile) => attempts.TryGetValue(tile, out int n) ? n : 0;
-
         private int PostOrders(FoundationState state)
         {
             float committed = pending.Values.Sum(p => p.Cost);
             List<FoundationSpot> chosen = FoundationRules.Choose(state, Plugin.KeepInfluence.Value, committed,
-                spot => !pending.ContainsKey(spot.Tile) && !bought.Contains(spot.Tile) && !refused.Contains(spot.Tile)
-                    && Attempts(spot.Tile) < MaxAttemptsPerTile && !IsCityOff(spot.City),
+                spot => !pending.ContainsKey(spot.Tile) && !bought.Contains(spot.Tile) && !refused.Contains(spot.Tile) && !IsCityOff(spot.City),
                 spot => FoundationRules.Value(spot.Yields, state.FindCity(spot.City)?.Weights));
-            float now = Time.unscaledTime;
             int posted = 0;
             foreach (FoundationSpot spot in chosen)
             {
-                if (posted >= MaxOrdersPerUpdate)
+                string sentIn = CurrentState();
+                // No ticket: the game is closing.
+                PostOrderTicket ticket = SandboxManager.PostAndTrackOrder(new OrderBuildFoundationAt(spot.City, spot.Tile));
+                if (ticket == null)
                 {
                     break;
                 }
@@ -381,15 +376,13 @@ namespace AutoFoundations
                 {
                     burstStartInfluence = state.Influence;
                 }
-                attempts[spot.Tile] = Attempts(spot.Tile) + 1;
                 pending[spot.Tile] = new PendingFoundation
                 {
                     City = spot.City,
                     Cost = Math.Max(0f, spot.Cost),
                     Yields = spot.Yields,
-                    Time = now,
-                    Scan = state.Scan,
-                    Ticket = SandboxManager.PostAndTrackOrder(new OrderBuildFoundationAt(spot.City, spot.Tile)),
+                    SentIn = sentIn,
+                    Ticket = ticket,
                 };
                 posted++;
             }
@@ -399,6 +392,8 @@ namespace AutoFoundations
             }
             return posted;
         }
+
+        private static string CurrentState() => SandboxManager.Sandbox?.CurrentStateName ?? string.Empty;
 
         private static string Key(ulong guid) => guid.ToString(System.Globalization.CultureInfo.InvariantCulture);
 

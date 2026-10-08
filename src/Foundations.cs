@@ -75,15 +75,16 @@ namespace AutoFoundations
 
         public static readonly string[] Labels = { "Food", "Industry", "Dust", "Science", "Influence", "Approval" };
 
-        // "+2 Food, +1 Industry"; "nothing" when every yield is 0.
+        // "+2 Food, +1 Industry"; "nothing" when every yield is 0 (as shown, to one decimal).
         public static string Describe(float[] yields)
         {
             var parts = new List<string>();
             for (int f = 0; f < Count; f++)
             {
-                if (Math.Abs(yields[f]) >= 0.05f)
+                string shown = yields[f].ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+                if (shown != "0" && shown != "-0")
                 {
-                    parts.Add((yields[f] > 0 ? "+" : string.Empty) + yields[f].ToString("0.#", System.Globalization.CultureInfo.InvariantCulture) + " " + Labels[f]);
+                    parts.Add((yields[f] > 0 ? "+" : string.Empty) + shown + " " + Labels[f]);
                 }
             }
             return parts.Count == 0 ? "nothing" : string.Join(", ", parts.ToArray());
